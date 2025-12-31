@@ -4,7 +4,7 @@ Understanding Azure VM naming conventions and matching the right configuration t
 
 ## 🎯 View the Presentation
 
-**👉 [View Presentation Online](https://colinweiner111.github.io/azure-vm-sizing/azure-vm-sizing-overview.html)**
+**👉 [Azure VM Sizing Overview](https://colinweiner111.github.io/azure-vm-sizing/azure-vm-sizing-overview.html)**
 
 *Note: GitHub Pages may take a few minutes to deploy after initial setup.*
 
