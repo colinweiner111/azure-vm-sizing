@@ -330,6 +330,9 @@ Size (SKU)
 <tr><td><strong>Dsv5</strong></td><td>D-family • Premium SSD • v5 generation</td><td>Default balanced workloads</td></tr>
 <tr><td><strong>Ebdsv5</strong></td><td>E-family • Bandwidth optimized • NVMe temp • Premium SSD</td><td>IO + memory-heavy databases</td></tr>
 <tr><td><strong>NVadsA10v5</strong></td><td>N-family • A10 GPU • Premium SSD</td><td>Graphics + ML inference</td></tr></table>
+<div class="highlight">
+  <strong>B-series note:</strong> Unlike other families, B-series uses a CPU credit model. VMs earn credits when idle and spend them during bursts. If credits run out, CPU is throttled to baseline. Not suitable for sustained high-CPU workloads.
+</div>
 <p class="overview"></p>
 </div></section>
 
@@ -565,6 +568,9 @@ Avoid assuming resizes are trivial — always validate region availability and q
 </table>
 <div class="highlight">
 Same size name across generations does <strong>not</strong> guarantee identical performance.
+</div>
+<div class="warning">
+<strong>Current state (late 2024/2025):</strong> v6 generation is still rolling out across regions. Check regional availability before planning v6 migrations. v5 remains widely available and stable.
 </div>
 </div></section>
 <section class="slide"><div class="card">
