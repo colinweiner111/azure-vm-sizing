@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Azure VM Naming: Series vs Size</title>
+  <style>
+    :root{
+      --bg:#0b1324;
+      --fg:#e5eef9;
+      --muted:#9fb3c8;
+      --accent:#16a34a;
+      --accent-2:#22c55e;
+      --slate:#9fb3d9;
+      --ink:#e6edf6;
+      --card:#0f172a;
+      --card-2:#111827;
+      --azure:#60a5fa;
+      --amber:#fbbf24;
+    }
+    html,body{height:100%; margin:0; background:var(--bg); color:var(--fg); font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+    .deck{position:relative; height:100%; overflow:hidden;}
+    .slides{height:100%; display:flex; transition:transform .45s ease;}
+    .slide{flex:0 0 100%; height:100%; box-sizing:border-box; padding:64px; display:flex; align-items:center; justify-content:center; position:relative;}
+    .card{max-width:1100px; width:100%; background:linear-gradient(180deg,var(--card),var(--card-2)); border:1px solid rgba(0,0,0,.08); border-radius:20px; padding:40px; box-shadow:0 10px 24px rgba(2,6,23,.65);}
+    h1{font-size:52px; margin:0 0 22px; position:relative; color:var(--ink);}
+    h1:after{ content:''; position:absolute; left:0; bottom:-8px; width:140px; height:6px; background:#3b82f6; border-radius:4px; }
+    h2{font-size:36px; margin:0 0 16px; color:var(--ink);}
+    h3{font-size:24px; margin:0 0 12px; color:var(--accent-2);}
+    p.lead{font-size:21px; color:var(--muted); margin:0 0 10px;}
+    .muted{color:var(--muted)}
+    .sub{display:block; color:var(--muted); font-size:17px; margin:2px 0 6px 0}
+    .overview{font-size:18px; color:var(--muted); margin-bottom:15px; line-height:1.5;}
+    ul{margin:0; padding-left:22px; font-size:19px; line-height:1.5}
+    li{margin:10px 0}
+    ul.compact>li{margin:10px 0}
+    code{background:rgba(255,255,255,.1); padding:2px 6px; border-radius:4px; font-family:ui-monospace,monospace; font-size:16px;}
+    pre{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:12px; overflow:auto; margin:10px 0;}
+    pre code{background:none; padding:0; font-size:14px;}
+    .topbar{position:absolute; top:0; left:0; right:0; height:50px; display:flex; align-items:center; justify-content:space-between; padding:0 20px; background:rgba(2,6,23,.8); color:#e5eef9; font-size:14px; z-index:10; border-bottom:1px solid rgba(148,163,184,.35);}
+    .controls{display:flex; gap:8px;}
+    .btn{background:#3b82f6; color:#0b1324; border:1px solid #60a5fa; padding:8px 16px; border-radius:9999px; cursor:pointer; font-size:14px; user-select:none;}
+    .btn:hover{background:#60a5fa; border-color:#93c5fd;}
+    .footer{position:absolute; bottom:0; left:0; right:0; height:40px; display:flex; align-items:center; justify-content:space-between; padding:0 20px; background:rgba(2,6,23,.8); color:#9fb3c8; font-size:13px; z-index:10; border-top:1px solid rgba(148,163,184,.35);}
+    .progress{height:6px; background:rgba(59,130,246,.15); position:absolute; bottom:40px; left:0; right:0;}
+    .bar{height:100%; width:0%; background:linear-gradient(90deg,#3b82f6,#06b6d4); transition:width .3s ease}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:flex-start;}
+    .diagram{background:#0b1020; border:2px solid var(--slate); border-radius:16px; padding:18px; font-size:14px; text-align:center;}
+    .diagram svg{width:100%; height:auto; filter: drop-shadow(0 2px 6px rgba(0,0,0,.08));}
+    svg *[stroke]{stroke:var(--slate); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;}
+    svg text{fill:#c7d2fe; font-weight:700;}
+    svg line[marker-end], svg path[marker-end]{stroke:#22c55e;}
+    .diagram-blue svg *[stroke]{stroke:var(--azure) !important;}
+    .diagram-blue svg line[marker-end], .diagram-blue svg path[marker-end]{stroke:var(--azure) !important;}
+    .diagram-blue svg text{fill:#dbeafe !important;}
+    a{color:#93c5fd; text-decoration:none; border-bottom:1px solid rgba(147,197,253,.35);}
+    a:hover{border-bottom-color: rgba(147,197,253,.7);}
+    .highlight{background:rgba(34,197,94,.15); border-left:4px solid var(--accent); padding:12px; border-radius:8px; margin:10px 0;}
+    .warning{background:rgba(251,191,36,.15); border-left:4px solid var(--amber); padding:12px; border-radius:8px; margin:10px 0;}
+    .command-box{background:rgba(34,197,94,.1); border-left:4px solid #16a34a; padding:12px; border-radius:8px; margin-bottom:15px;}
+    table{width:100%; border-collapse:collapse; margin:10px 0; font-size:16px;}
+    th,td{padding:8px; text-align:left; border-bottom:1px solid rgba(255,255,255,.1);}
+    th{color:var(--accent-2); font-weight:600;}
+  
+.slide-number{position:absolute; bottom:54px; right:24px; font-size:14px; color:#e5eef9; opacity:.85; background:rgba(2,6,23,.55); border:1px solid rgba(148,163,184,.35); padding:6px 10px; border-radius:9999px; z-index:20;}
+
+
+.grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; align-items:stretch;}
+
+.topbar{display:none !important;}
+
+
+.controls{display:none !important;}
+
+</style>
+</head>
+<body>
+  <div class="deck" id="deck">
+    <div class="topbar"></div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="slides" id="slides">
+
+<section class="slide"><div class="card">
+  <h1>Azure Virtual Machine Sizes Overview</h1>
+  <p class="lead">How families, series, and sizes map to real Azure VM capabilities</p>
+  </div></section>
+
+
+
+
+<section class="slide"><div class="card">
+  <h2>What We’re Going to Cover</h2>
+  <ul>
+    <li>
+      <strong>How Azure VM naming actually works</strong>
+      <span class="sub">Family, series, and size — what each one represents</span>
+    </li>
+    <li>
+      <strong>How to read a VM name left → right</strong>
+      <span class="sub">What each letter, number, and version implies</span>
+    </li>
+    <li>
+      <strong>How to choose the right series first</strong>
+      <span class="sub">Balanced vs memory vs compute vs GPU — before choosing a VM size</span>
+    </li>
+    <li>
+      <strong>How Microsoft documentation maps to VM selection</strong>
+      <span class="sub">Family → Series → Size → region and quota checks</span>
+    </li>
+    <li>
+      <strong>Common VM sizing considerations</strong>
+      <span class="sub">Key considerations during VM deployment</span>
+    </li>
+  </ul>
+
+  <p class="overview">
+    By the end, you should be able to look at <code>D16ds_v5</code> and understand the <strong>underlying capabilities and constraints</strong> of that VM — not just its size.
+  </p>
+</div></section>
+
+
+
+
+
+
+
+<section class="slide"><div class="card">
+  <h2>How Azure Organizes Virtual Machines</h2>
+  <div class="diagram">
+    <pre><code>Type / Category
+(General purpose / Memory / Compute / GPU / HPC)
+      ↓
+Family
+(D / E / F / N / H)
+      ↓
+Series
+(Dsv5 / Dasv6 / Ebdsv5)
+      ↓
+Size (SKU)
+(D16ds_v5 / D32as_v6)</code></pre>
+  </div>
+  <ul class="compact">
+<li><strong>Type / category</strong> = the workload class you’re optimizing for (balanced, memory, compute, GPU, HPC)</li>
+    <li><strong>Family</strong> = workload archetype (balanced, memory-optimized, GPU…)</li>
+    <li><strong>Series</strong> = a lineup built on the same generation + capability pattern</li>
+    <li><strong>Size</strong> = a specific deployable SKU with exact vCPU/memory and flags</li>
+  </ul>
+</div></section>
+
+
+<section class="slide"><div class="card">
+  <h2>How Microsoft Organizes VM Sizes in Documentation</h2>
+
+  <p class="lead">
+    Microsoft documentation reflects the same hierarchy you just saw —
+    but it’s split across different pages and navigation paths.
+  </p>
+
+  
+  <pre><code>Microsoft Docs / Portal
+        │
+        ├─ Family pages
+        │    (workload intent)
+        │
+        ├─ Series pages
+        │    (hardware + capabilities)
+        │
+        └─ Size tables
+             (deployable SKUs + limits)</code></pre>
+<ul class="compact">
+    <li><strong>Family</strong> pages describe the workload focus (general purpose, memory, compute, GPU)</li>
+    <li><strong>Series</strong> pages define hardware generations, capabilities, and supported features</li>
+    <li><strong>Size</strong> tables list the deployable SKUs, limits, and regional availability</li>
+  </ul>
+
+  <p class="note">
+    This is why you often see separate links for <em>Series</em> and <em>Sizes</em> in Microsoft Learn and the Azure portal —
+    they answer different questions.
+  </p>
+</div></section>
+
+
+<section class="slide"><div class="card">
+  <h2>So… why is there a “Series” and “Size” link?</h2>
+  <ul>
+    <li><strong>Series view</strong> answers: “What family lineup should I be in?”
+      <span class="sub">Hardware generation + capability pattern + intended workloads.</span></li>
+    <li><strong>Size view</strong> answers: “Which exact SKU do I deploy?”
+      <span class="sub">vCPU count, memory amount, flags, accelerator model, version.</span></li>
+  </ul>
+  <div class="warning">
+    <strong>Operational reality:</strong> common operational scenarios start when someone chooses by vCPU count only (size) without validating the series contract (CPU vendor, temp disk, bandwidth, gen).
+  </div>
+</div></section>
+
+<section class="slide"><div class="card">
+  <h2>Series vs Size: What Each One Answers</h2>
+  <table>
+    <tr><th>Concept</th><th>What it is</th><th>How you use it</th></tr>
+    <tr>
+      <td><strong>Series</strong></td>
+      <td>A group of related sizes with the same naming pattern and generation (e.g., <code>Dsv5</code>)</td>
+      <td>Pick the lineup that matches workload intent (balanced vs memory vs GPU), plus platform capabilities.</td>
+    </tr>
+    <tr>
+      <td><strong>Size</strong></td>
+      <td>A specific deployable SKU inside that series (e.g., <code>D16s_v5</code>)</td>
+      <td>Right-size vCPU/memory within the chosen series, then validate quotas/availability.</td>
+    </tr>
+  </table>
+  <p class="overview">You can often resize within a series easily; Series defines platform behavior; size defines capacity.</p>
+</div></section>
+
+
+
+
+
+
+<section class="slide"><div class="card">
+  <h2>The official naming grammar (read left → right)</h2>
+  <div class="command-box">
+    <pre><code>[Family] + [Sub-family]* + [# vCPUs] + [Constrained vCPUs]*
+        + [Additive Features] + [Accelerator Type]* + [Memory Capacity]* + [Version]</code></pre>
+  </div>
+  <ul>
+    <li>Uppercase letters (family/sub-family) set the workload class.</li>
+    <li>Numbers set the guest-visible vCPU count.</li>
+    <li>Lowercase letters are <strong>additive features</strong> that change capabilities.</li>
+    <li><code>_v#</code> is the series version (generation contract).</li>
+  </ul>
+
+<hr/>
+<h3>VM Name Parsing Map</h3>
+<pre><code>D 16 d s _v5
+│ │  │ │   │
+│ │  │ │   └─ Generation
+│ │  │ └─ Premium SSD support
+│ │  └─ Local NVMe temp disk
+│ └─ vCPU count
+└─ Family</code></pre>
+<p class="overview">Read left to right. Every character changes behavior.</p>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Example: Reading a VM Name</h2>
+  <div class="highlight">
+    <h3><code>E32ds_v5</code></h3>
+    <ul>
+      <li><strong>E</strong> = Memory optimized family</li>
+      <li><strong>32</strong> = 32 vCPUs</li>
+      <li><strong>d</strong> = includes local temporary disks (NVMe/temp storage)</li>
+      <li><strong>s</strong> = compatible with premium SSD types</li>
+      <li><strong>v5</strong> = version/generation</li>
+    </ul>
+  </div>
+  <p class="overview">If you miss <code>d</code>, you miss local temp disk behavior. If you miss <code>v5</code>, you miss a generation change.</p>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Additive feature flags (cloud engineer cheat sheet)</h2>
+  <table>
+    <tr><th>Flag</th><th>Meaning</th><th>Support / workload signal</th></tr>
+    <tr><td><code>a</code></td><td>AMD-based processor</td><td>CPU vendor shift; validate perf + licensing assumptions</td></tr>
+    <tr><td><code>p</code></td><td>ARM-based processor</td><td>Compatibility check (images, agents, drivers); great price/perf for some Linux workloads</td></tr>
+    <tr><td><code>d</code></td><td>Includes local temporary disks</td><td>Scratch/caching/spill; <strong>not durable</strong></td></tr>
+    <tr><td><code>s</code></td><td>Premium SSD compatible</td><td>Most production persistent disks need this</td></tr>
+    <tr><td><code>r</code></td><td>Includes RDMA secondary network</td><td>HPC/MPI; fabric expectations + placement matters</td></tr>
+    <tr><td><code>i</code></td><td>Isolated size</td><td>Single-tenant isolation; compliance / noisy-neighbor avoidance</td></tr>
+    <tr><td><code>e</code></td><td>Encrypted / confidential TDX capability</td><td>Confidential computing; security posture change</td></tr>
+    <tr><td><code>b</code></td><td>Remote storage bandwidth optimized</td><td>When disks are the bottleneck (not CPU)</td></tr>
+    <tr><td><code>n</code></td><td>Network optimized</td><td>Higher vCPU-to-network bandwidth ratio</td></tr>
+  </table>
+  <p class="muted">There are more flags (f, l, m, o, t…)—these are the ones that show up most often in support conversations.</p>
+
+  <p class="note">
+    <strong>GPU note:</strong> GPUs aren’t represented by a single-letter flag. GPU SKUs are primarily identified by the
+    <strong>N</strong> family / series (e.g., NC/ND/NV), and the accelerator often appears as a token in the name
+    (e.g., <code>_T4_</code>, <code>_A10_</code>, <code>_A100_</code>).
+  </p>
+
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Example: Reading a GPU VM Name</h2>
+
+  <p class="lead">
+    GPU SKUs follow the same rules — series indicates the platform, and extra letters add capabilities.
+  </p>
+
+  <pre><code>NC4as_T4_v3</code></pre>
+
+  <ul class="compact">
+    <li><strong>N</strong> = GPU-enabled family</li>
+    <li><strong>C</strong> = Compute-focused GPU series (HPC / ML workloads)</li>
+    <li><strong>4</strong> = Capacity tier (vCPU / memory sizing)</li>
+    <li><strong>a</strong> = AMD-based CPU</li>
+    <li><strong>s</strong> = Premium SSD support</li>
+    <li><strong>T4</strong> = NVIDIA Tesla T4 accelerator</li>
+    <li><strong>v3</strong> = Generation</li>
+  </ul>
+
+  <p class="note">
+    Same takeaway: <strong>The number just scales the VM — it doesn’t change what it is.</strong></p>
+</div></section>
+<section class="slide"><div class="card">
+<h2>Quick Reference: Azure VM Families</h2>
+<table>
+<tr><th>Family</th><th>Primary Use</th><th>Memory Ratio (RAM per vCPU)</th><th>Key Flags</th><th>Typical Workloads</th></tr>
+<tr><td>D</td><td>General purpose</td><td>~4 GiB/vCPU</td><td>s, d, a</td><td>App tiers, services</td></tr>
+<tr><td>E</td><td>Memory optimized</td><td>8–16 GiB/vCPU</td><td>b, s, d</td><td>SQL, SAP, JVM</td></tr>
+<tr><td>F</td><td>Compute optimized</td><td>~2 GiB/vCPU</td><td>a</td><td>CPU-bound apps</td></tr>
+<tr><td>L</td><td>Storage optimized</td><td>Varies</td><td>d</td><td>IO-heavy, logs</td></tr>
+<tr><td>N</td><td>GPU</td><td>Specialized</td><td>_A100, _T4</td><td>ML, VDI</td></tr>
+<tr><td>H</td><td>HPC</td><td>Specialized</td><td>r</td><td>MPI, CFD</td></tr>
+</table>
+<p class="note">
+  <strong>Note:</strong> Memory ratio describes how much RAM is allocated per vCPU.
+  This is why two VMs with the same core count can behave very differently across families.
+</p>
+
+<p class="overview"></p>
+</div></section>
+
+
+
+
+<section class="slide"><div class="card">
+<h2>Series Lookup Cheat Sheet (Patterns You’ll See Often)</h2>
+<table><tr><th>Series</th><th>Decoded Meaning</th><th>When to Use</th></tr>
+<tr><td><strong>Bsv2</strong></td><td>B-series • Burstable CPU (baseline + credits)</td><td>Dev/test, low-util apps with spikes</td></tr>
+<tr><td><strong>Dasv6</strong></td><td>D-family • AMD EPYC • Premium SSD • v6 generation</td><td>Price/perf, scale-out apps</td></tr>
+<tr><td><strong>Dpsv6</strong></td><td>D-family • ARM-based • Premium SSD</td><td>Linux scale-out, cost efficiency</td></tr>
+<tr><td><strong>Dsv5</strong></td><td>D-family • Premium SSD • v5 generation</td><td>Default balanced workloads</td></tr>
+<tr><td><strong>Ebdsv5</strong></td><td>E-family • Bandwidth optimized • NVMe temp • Premium SSD</td><td>IO + memory-heavy databases</td></tr>
+<tr><td><strong>NVadsA10v5</strong></td><td>N-family • A10 GPU • Premium SSD</td><td>Graphics + ML inference</td></tr></table>
+<p class="overview"></p>
+</div></section>
+
+
+<section class="slide"><div class="card">
+  <h2>Naming Anomalies &amp; Exceptions</h2>
+
+  <ul>
+    <li><strong>Confidential computing</strong> (DC-series, some <code>e</code> variants) does not follow standard D/E rules.</li>
+    <li><strong>HPC families</strong> (HB, HC) have unique naming and placement constraints.</li>
+    <li>Older generations may not cleanly map to v5/v6 expectations.</li>
+  </ul>
+
+  <div class="warning">
+If a SKU looks weird, assume it is special — and validate against the series documentation.
+</div>
+
+  <hr/>
+
+  <h3>Example</h3>
+  <pre><code>DC2as_v5</code></pre>
+
+  <ul class="compact">
+    <li><strong>DC</strong> = Confidential Computing series (trusted execution environment)</li>
+    <li><strong>2</strong> = Capacity tier (vCPU / memory sizing)</li>
+    <li><strong>a</strong> = AMD-based CPU</li>
+    <li><strong>s</strong> = Premium SSD support</li>
+    <li><strong>v5</strong> = Generation</li>
+  </ul>
+</div></section>
+<section class="slide"><div class="card">
+<h2>VM Sizing Best Practices</h2>
+<div class="diagram">
+<pre><code>Workload Type
+      ↓
+   Family
+      ↓
+   Series
+      ↓
+   Flags
+      ↓
+    Size
+      ↓
+Region / Quota / Availability</code></pre>
+</div>
+<p class="overview">Series first, size second — always.</p>
+</div></section>
+<section class="slide"><div class="card">
+<h2>Why This Matters</h2>
+<ul>
+<li>Wrong <strong>series</strong> = wrong hardware contract (CPU, memory, IO behavior).</li>
+<li>Wrong <strong>flags</strong> = missing temp disk, bandwidth, or storage capabilities.</li>
+<li>Wrong <strong>generation</strong> = availability and performance surprises.</li>
+<li>Wrong <strong>size</strong> = licensing waste or throttling.</li>
+</ul>
+<div class="warning">
+Most recurring performance degradation and reliability problems start with a correct size chosen in the wrong series.
+</div>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>How to choose: series first, size second</h2>
+  <ol style="font-size:19px; line-height:1.55; margin:0; padding-left:22px;">
+    <li><strong>Identify workload bottleneck</strong>: CPU, memory, IO, network, GPU?</li>
+    <li><strong>Select family</strong>: D (balanced), E (memory), F (compute), L (storage), N (GPU), H (HPC)…</li>
+    <li><strong>Select series contract</strong>: vendor (<code>a</code>/<code>p</code>), temp disk (<code>d</code>), premium disks (<code>s</code>), bandwidth flags.</li>
+    <li><strong>Pick the size</strong>: start small enough to measure, big enough to avoid immediate saturation.</li>
+    <li><strong>Validate constraints</strong>: region availability, quota, disk limits, bandwidth limits, acceleration availability.</li>
+  </ol>
+  <div class="highlight">
+    Support tip: “Right series, wrong size” is fixable with resize. “Wrong series” often requires redeployment and downtime.
+  </div>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Walkthrough: from series → size in practice</h2>
+  <table>
+    <tr><th>Question</th><th>Series-level answer</th><th>Size-level answer</th></tr>
+    <tr><td>Do we need balanced vs memory-optimized?</td><td>Pick <code>D*</code> vs <code>E*</code></td><td>Pick <code>D16*</code> vs <code>E16*</code></td></tr>
+    <tr><td>Do we need local NVMe temp?</td><td>Series with <code>d</code> behavior</td><td>Confirm the exact size includes <code>d</code></td></tr>
+    <tr><td>Do we need premium disks?</td><td>Choose series with <code>s</code></td><td>Ensure the size has <code>s</code></td></tr>
+    <tr><td>Do we need AMD or ARM?</td><td>Pick series with <code>a</code> or <code>p</code></td><td>Keep flags consistent during resize</td></tr>
+  </table>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Workload example 1: enterprise web/app tier</h2>
+  <h3>Pattern</h3>
+  <ul>
+    <li>CPU moderate, memory moderate, needs reliable disk performance</li>
+    <li>Scale-out friendly, predictable latency</li>
+  </ul>
+  <h3>Sizing guidance</h3>
+  <ul>
+    <li>Start with <strong>D-family</strong> (balanced) and a premium-disk capable series (<code>…s…</code>).</li>
+    <li>Example sizing path: <code>D4s_v5</code> → <code>D8s_v5</code> → <code>D16s_v5</code> based on CPU/mem utilization and app latency.</li>
+  </ul>
+  <div class="warning">
+    Common mistake: choosing a “bigger number” in a different series and unintentionally changing temp disk, CPU vendor, or generation.
+  </div>
+</div></section>
+
+<section class="slide"><div class="card">
+  <h2>Workload example 2: SQL Server / relational DB</h2>
+  <h3>Pattern</h3>
+  <ul>
+    <li>Often memory and storage-bandwidth sensitive</li>
+    <li>Licensing can dominate cost (core-based)</li>
+  </ul>
+  <h3>Sizing guidance</h3>
+  <ul>
+    <li>Consider <strong>E-family</strong> (memory optimized) and bandwidth-oriented flags.</li>
+    <li>Use temp disk (<code>d</code>) for <em>tempdb</em> when appropriate; use managed disks for durable data/logs.</li>
+    <li>Know constrained vCPU options for licensing control (see next slide).</li>
+  </ul>
+  <div class="highlight">
+    Docs even call out examples like <code>E96bds_v5</code> as a SQL Server preferred option in the naming breakdown.
+  </div>
+</div></section>
+
+
+<section class="slide"><div class="card">
+<h2>Resizing & Cross‑Series Compatibility (Reality)</h2>
+<table>
+<tr><th>Resize Scenario</th><th>Usually Works?</th><th>Why</th></tr>
+<tr><td>D16s_v4 → D16s_v5</td><td>Sometimes</td><td>Region + generation availability</td></tr>
+<tr><td>D16s_v5 → D16as_v5</td><td>No</td><td>CPU vendor change</td></tr>
+<tr><td>D16s_v5 → D32s_v5</td><td>Yes</td><td>Same series; quota permitting</td></tr>
+</table>
+<div class="highlight">
+Avoid assuming resizes are trivial — always validate region availability and quota first.
+</div>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Constrained vCPU SKUs (licensing lever)</h2>
+
+  <p class="lead">
+    These SKUs exist primarily to reduce <strong>core‑based software licensing cost</strong>,
+    not to reduce platform capability.
+  </p>
+
+  
+  <ul class="compact">
+    <li><strong>Used for certain sizes only:</strong> exposes fewer vCPUs than the underlying hardware allocation.</li>
+    <li><strong>Goal:</strong> reduce core-based licensing cost while retaining memory and IO characteristics.</li>
+  </ul>
+
+<h3>Common use case: SQL Server</h3>
+
+  <pre><code>E16-8s_v5</code></pre>
+
+  <ul class="compact">
+    <li><strong>E</strong> = Memory‑optimized family (good for databases)</li>
+    <li><strong>16‑class hardware</strong> = same memory, IO, and bandwidth as full E16</li>
+    <li><strong>8 exposed vCPUs</strong> = only 8 cores need to be licensed</li>
+    <li><strong>s</strong> = Premium SSD support</li>
+    <li><strong>v5</strong> = Generation</li>
+  </ul>
+
+  <div class="highlight">
+    Key idea: constrained vCPU SKUs reduce <strong>licensed cores</strong>, not memory,
+    storage throughput, or network bandwidth.
+  </div>
+
+  <p class="muted">
+    This pattern is most common for SQL Server, Oracle, and other core‑licensed software.
+  </p>
+</div></section>
+<section class="slide"><div class="card">
+<h2>Managed Disks and Local Temp Disk (Used Together)</h2>
+<table>
+<tr><th>Feature</th><th>Depends On</th><th>Notes</th></tr>
+<tr><td>Ephemeral OS Disk</td><td>Series + size</td><td>Not universal; validate per size</td></tr>
+<tr><td>Local Temp Disk</td><td><code>d</code> flag</td><td>Fast, not durable</td></tr>
+<tr><td>Premium SSD</td><td><code>s</code> flag</td><td>Most production workloads</td></tr>
+<tr><td>Ultra Disk</td><td>Series + region + size</td><td>Requires explicit support</td></tr>
+</table>
+<p class="overview">Always validate storage features at the <strong>size</strong> level.</p>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Storage reality: local temp disk vs managed disks</h2>
+  <ul>
+    <li><code>d</code> means the VM includes <strong>local temporary disks</strong> (often NVMe on the host).</li>
+    <li>Local temp storage is great for:
+      <ul>
+        <li>DB tempdb, caches, build artifacts, spill, scratch, short-lived staging</li>
+      </ul>
+    </li>
+    <li class="warning"><strong>But:</strong> local temp storage is not durable. Host moves/redeployments can wipe it.</li>
+    <li><code>s</code> means the VM is compatible with Premium SSD types for <strong>persistent</strong> managed disks.</li>
+  </ul>
+  <div class="highlight">
+    <strong>Common mistake:</strong> customer stores durable data on temp disk because it “benchmarks fast.”
+  </div>
+</div></section>
+
+
+
+<section class="slide"><div class="card">
+  <h2>Confidential + isolation patterns</h2>
+  <ul>
+    <li><strong>Isolated sizes</strong> (<code>i</code>) = single-tenant isolation for compliance / performance determinism.</li>
+    <li><strong>Confidential computing</strong> often shows up as:
+      <ul>
+        <li>Family variants like <code>DC*</code> (confidential families)</li>
+        <li>Additive feature <code>e</code> (encrypted / confidential TDX capabilities)</li>
+        <li>Sub-family <code>C</code> in some naming contexts (confidential) — check series docs</li>
+      </ul>
+    </li>
+  </ul>
+  <div class="warning">
+    Confidential SKUs can change performance characteristics and supported features (e.g., nested virt, driver expectations). Treat them like a different platform.
+  </div>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Version / generation (<code>_v#</code>) is a hardware contract</h2>
+  <ul>
+    <li>Generation changes can alter CPU microarchitecture, memory channels, PCIe generation, NIC characteristics.</li>
+    <li>Same “shape” across generations does <strong>not</strong> mean same performance.</li>
+    <li>Operationally: <strong>regional availability</strong> and <strong>quota</strong> can differ by generation.</li>
+  </ul>
+  <div class="highlight">
+    Example: <code>D32s_v3</code> and <code>D32s_v5</code> may have the same vCPU/memory ratio but differ materially in CPU and IO behavior.
+  </div>
+</div></section>
+<section class="slide"><div class="card">
+<h2>What Typically Changes Between v4, v5, and v6</h2>
+<table>
+<tr><th>Area</th><th>What Changes</th></tr>
+<tr><td>CPU</td><td>Newer microarchitecture and instruction support</td></tr>
+<tr><td>Memory</td><td>Higher bandwidth and improved NUMA layouts</td></tr>
+<tr><td>Storage</td><td>Faster local temp disks and newer PCIe generations</td></tr>
+<tr><td>Network</td><td>Higher baseline throughput and NIC capabilities</td></tr>
+<tr><td>Availability</td><td>Rolls out region by region, not globally at once</td></tr>
+<tr><td>Quotas</td><td>Often tracked separately per generation</td></tr>
+</table>
+<div class="highlight">
+Same size name across generations does <strong>not</strong> guarantee identical performance.
+</div>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Series naming: what’s in the series name vs size name?</h2>
+  <div class="diagram">
+    <pre><code>Series:  Dsv5
+Size:    D16s_v5</code></pre>
+  </div>
+  <ul>
+    <li><strong>Series</strong> groups the lineup: family + capability pattern + version (<code>Dsv5</code>).</li>
+    <li><strong>Size</strong> adds the concrete deployable SKU: vCPU count + any extra flags (<code>D16s_v5</code>).</li>
+  </ul>
+  <p class="overview">Docs show both because engineers often start at the series level (“Which lineup?”) before picking a size (“How big?”).</p>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Workload example 3: AVD / VDI / graphics workloads</h2>
+  <h3>Pattern</h3>
+  <ul>
+    <li>GPU acceleration needed for UX, graphics apps, or media workloads</li>
+    <li>Driver + image compatibility matters as much as vCPU/memory</li>
+  </ul>
+  <h3>Sizing guidance</h3>
+  <ul>
+    <li>Choose <strong>NV</strong> series for visualization/graphics-optimized workloads.</li>
+    <li>Validate GPU model availability (accelerator type is often in the SKU for newer GPU sizes).</li>
+    <li>Plan driver lifecycle: version pinning, monitoring, and rollback.</li>
+  </ul>
+</div></section>
+<section class="slide"><div class="card">
+  <h2>Workload example 4: HPC / MPI / low-latency clusters</h2>
+  <h3>Pattern</h3>
+  <ul>
+    <li>Scale-out compute, tightly coupled nodes, sensitive to latency/jitter</li>
+  </ul>
+  <h3>Sizing guidance</h3>
+  <ul>
+    <li>Look for <code>r</code> (RDMA / InfiniBand secondary network) or HPC families (<strong>H*</strong>).</li>
+    <li>Placement and network fabric are part of the performance model.</li>
+    <li>Don’t treat these as “just bigger VMs.” They are a different platform tier.</li>
+  </ul>
+</div></section>
+    
+<section class="slide"><div class="card">
+  <h2>Questions &amp; Microsoft VM Sizing Resources</h2>
+  <p class="lead">Official documentation to validate series, sizes, limits, and availability</p>
+
+  <ul>
+    <li><strong>Azure VM sizes overview</strong><br/>
+      <a href="https://learn.microsoft.com/azure/virtual-machines/sizes" target="_blank">
+        https://learn.microsoft.com/azure/virtual-machines/sizes
+      </a>
+    </li>
+
+    <li><strong>VM naming conventions</strong><br/>
+      <a href="https://learn.microsoft.com/azure/virtual-machines/vm-naming-conventions" target="_blank">
+        https://learn.microsoft.com/azure/virtual-machines/vm-naming-conventions
+      </a>
+    </li>
+
+    <li><strong>Azure VM quotas and limits</strong><br/>
+      <a href="https://learn.microsoft.com/azure/quotas/view-quotas" target="_blank">
+        https://learn.microsoft.com/azure/quotas/view-quotas
+      </a>
+    </li>
+
+    </ul>
+</div></section>
+
+
+</div>
+  </div>
+
+<section class="slide"><div class="card" style="display:flex; align-items:center; justify-content:center; height:100%;">
+  <h1 style="text-align:center;">The End</h1>
+</div></section>
+
+
+  <script>
+  (function(){
+    const slidesEl = document.getElementById('slides');
+    const bar = document.getElementById('bar');
+    const prevBtn = document.getElementById('prev');
+    const nextBtn = document.getElementById('next');
+    const idxEl = document.getElementById('slide-idx');
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    let i = 0; const count = slides.length;
+
+    function go(n){
+      i = Math.max(0, Math.min(count - 1, n));
+      if (slidesEl) slidesEl.style.transform = `translateX(${-100 * i}%)`;
+      if (bar) bar.style.width = `${((i + 1) / count) * 100}%`;
+      if (idxEl) idxEl.textContent = `${i + 1} / ${count}`;
+    }
+    function next(){ go(i + 1); }
+    function prev(){ go(i - 1); }
+
+    if (prevBtn){ prevBtn.onclick = null; prevBtn.addEventListener('click', prev); }
+    if (nextBtn){ nextBtn.onclick = null; nextBtn.addEventListener('click', next); }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') next();
+      if (e.key === 'ArrowLeft')  prev();
+      if (e.key === 'Home')       go(0);
+      if (e.key === 'End')        go(count - 1);
+      if (e.key === 'p' || e.key === 'P') window.print();
+    });
+
+    if (slidesEl){
+      slidesEl.addEventListener('click', (e) => {
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (['button','a','input','textarea','select','label'].includes(tag)) return;
+        next();
+      });
+    }
+
+    const topbar = document.querySelector('.topbar');
+    if (topbar){ topbar.style.pointerEvents = 'auto'; topbar.style.zIndex = '20'; }
+
+    go(0);
+  })();
+  </script>
+
+
+
+
+<script>
+(function(){
+  const slidesEl = document.getElementById('slides');
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+
+  // Add per-slide badges
+  slides.forEach((slide, idx) => {
+    let sn = slide.querySelector('.slide-number');
+    if(!sn){
+      sn = document.createElement('div');
+      sn.className = 'slide-number';
+      slide.appendChild(sn);
+    }
+    sn.textContent = `Slide ${idx+1} / ${total}`;
+  });
+
+  // Track current slide (supports existing next/prev + arrow keys)
+  let index = 0;
+
+  const bar = document.getElementById('bar');
+  const indicator = document.getElementById('slideIndicator');
+
+  function render(){
+    const pct = total <= 1 ? 100 : (index/(total-1))*100;
+    if(bar) bar.style.width = pct + '%';
+    if(slidesEl) slidesEl.style.transform = `translateX(-${index*100}%)`;
+    if(indicator) indicator.textContent = `Slide ${index+1} / ${total}`;
+  }
+
+  function clamp(i){ return Math.max(0, Math.min(total-1, i)); }
+
+  // Hook buttons if present
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+
+  if(prevBtn) prevBtn.addEventListener('click', () => { index = clamp(index-1); render(); });
+  if(nextBtn) nextBtn.addEventListener('click', () => { index = clamp(index+1); render(); });
+
+  // Keyboard navigation
+  window.addEventListener('keydown', (e) => {
+    if(e.key === 'ArrowRight' || e.key === 'PageDown'){ index = clamp(index+1); render(); }
+    if(e.key === 'ArrowLeft'  || e.key === 'PageUp'){ index = clamp(index-1); render(); }
+    if(e.key === 'Home'){ index = 0; render(); }
+    if(e.key === 'End'){ index = total-1; render(); }
+  });
+
+  render();
+})();
+</script>
+
+
+<script>
+/* Disable click-to-advance; keep keyboard navigation.
+   Allow normal clicks on links (<a>) and selectable text. */
+document.addEventListener('click', function(e){
+  const a = e.target.closest && e.target.closest('a');
+  if (a) return; // allow link clicks
+  // Prevent any click-to-advance handlers in this deck
+  e.stopPropagation();
+}, true);
+</script>
+
+</body>
+</html>
