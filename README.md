@@ -26,7 +26,3 @@ For anyone deploying or managing Azure VMs who wants to move beyond guesswork an
 - [Azure VM Sizes Documentation](https://learn.microsoft.com/azure/virtual-machines/sizes)
 - [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/)
 - [Azure VM Selector Tool](https://azure.microsoft.com/pricing/vm-selector/)
-
----
-
-*This presentation is provided for educational purposes.*
